@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#17151b">
+<title>КОЗЁЛ В КОМНАТЕ</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#17151b;font-family:system-ui,-apple-system,Segoe UI,sans-serif;touch-action:none;color:#fff}
+#game{position:fixed;inset:0}canvas{display:block;width:100%;height:100%}
+#hud{position:fixed;top:env(safe-area-inset-top,12px);left:0;right:0;display:flex;justify-content:center;pointer-events:none;padding:14px}
+#title{background:#17151bcc;border:1px solid #ffffff22;border-radius:14px;padding:8px 16px;font-weight:900;letter-spacing:.12em;font-size:14px}
+#hint{position:fixed;top:62px;left:0;right:0;text-align:center;color:#d4cbd9;font-size:12px;text-shadow:0 2px 5px #000;pointer-events:none}
+#joy{position:fixed;left:max(22px,env(safe-area-inset-left));bottom:max(24px,env(safe-area-inset-bottom));width:142px;height:142px;border-radius:50%;background:#ffffff18;border:2px solid #ffffff50;backdrop-filter:blur(6px);touch-action:none}
+#knob{position:absolute;width:58px;height:58px;border-radius:50%;left:40px;top:40px;background:#eee9f5dd;border:2px solid #fff;box-shadow:0 4px 18px #0008}
+#run{position:fixed;right:max(24px,env(safe-area-inset-right));bottom:max(35px,env(safe-area-inset-bottom));width:76px;height:76px;border-radius:50%;border:2px solid #ffffff77;background:#9c62bdcc;color:white;font-size:12px;font-weight:900;letter-spacing:.08em}
+#reset{position:fixed;right:16px;top:16px;border:1px solid #ffffff44;border-radius:10px;background:#17151bcc;color:#fff;padding:8px 12px}
+@media (min-width:800px){#joy{width:160px;height:160px}#knob{left:48px;top:48px}#hint{top:66px}}
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div id="hud"><div id="title">КОЗЁЛ В КОМНАТЕ</div></div>
+<div id="hint">Двигай джойстик · WASD / стрелки на клавиатуре</div>
+<div id="joy"><div id="knob"></div></div>
+<button id="run">БЕЖАТЬ</button>
+<button id="reset">ЗАНОВО ↻</button>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js';
+
+const mount=document.querySelector('#game');
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0xaaa4b1);
+scene.fog=new THREE.Fog(0xaaa4b1,18,38);
+const camera=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,100);
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+mount.appendChild(renderer.domElement);
+
+scene.add(new THREE.HemisphereLight(0xffffff,0x716779,2.1));
+const key=new THREE.DirectionalLight(0xffefd9,2.5);key.position.set(-5,10,6);key.castShadow=true;key.shadow.mapSize.set(1024,1024);scene.add(key);
+const fill=new THREE.PointLight(0xbda4ff,18,22);fill.position.set(4,4,-5);scene.add(fill);
+
+const mat=(color,roughness=.85)=>new THREE.MeshStandardMaterial({color,roughness});
+const floorMat=mat(0xbcb7c1),wallMat=mat(0xd8d3dc),trimMat=mat(0xaaa3b0),goatMat=mat(0xeee8dc),darkMat=mat(0x342d32),hoofMat=mat(0x40383d),hornMat=mat(0xc9b99a),eyeMat=new THREE.MeshStandardMaterial({color:0x17131a,roughness:.25});
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(32,32),floorMat);floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;scene.add(floor);
+function box(w,h,d,x,y,z,m){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;scene.add(o);return o}
+box(32,8,.35,0,4,-16,wallMat);box(.35,8,32,-16,4,0,wallMat);box(.35,8,32,16,4,0,wallMat);
+box(32,.18,.5,0,.09,-15.72,trimMat);box(.5,.18,32,-15.72,.09,0,trimMat);box(.5,.18,32,15.72,.09,0,trimMat);
+// A few subtle ceiling-free room details make the space readable but mostly empty.
+for(let i=-12;i<=12;i+=4){box(.025,8,.025,i,4,-15.78,trimMat)}
+const goat=new THREE.Group();scene.add(goat);
+const torso=new THREE.Mesh(new THREE.CapsuleGeometry(.48,.85,5,10),goatMat);torso.rotation.z=Math.PI/2;torso.position.y=1.02;torso.castShadow=true;goat.add(torso);
+const rump=new THREE.Mesh(new THREE.SphereGeometry(.43,16,12),goatMat);rump.position.set(-.53,1.02,0);rump.castShadow=true;goat.add(rump);
+const neck=new THREE.Mesh(new THREE.CylinderGeometry(.24,.32,.68,14),goatMat);neck.position.set(.48,1.28,0);neck.rotation.z=-.38;neck.castShadow=true;goat.add(neck);
+const head=new THREE.Group();head.position.set(.72,1.58,0);goat.add(head);
+const skull=new THREE.Mesh(new THREE.SphereGeometry(.34,18,14),goatMat);skull.scale.set(1.12,1,.88);skull.castShadow=true;head.add(skull);
+const muzzle=new THREE.Mesh(new THREE.SphereGeometry(.2,14,10),mat(0xd9c9bd));muzzle.scale.set(1,.68,.82);muzzle.position.set(.29,-.12,0);head.add(muzzle);
+for(const s of [-1,1]){
+ const ear=new THREE.Mesh(new THREE.ConeGeometry(.12,.48,10),goatMat);ear.position.set(-.04,.2,s*.36);ear.rotation.z=.9;ear.rotation.x=s*.5;head.add(ear);
+ const horn=new THREE.Mesh(new THREE.ConeGeometry(.105,.48,12),hornMat);horn.position.set(-.13,.42,s*.19);horn.rotation.z=-.28;horn.rotation.x=s*.22;head.add(horn);
+ const eye=new THREE.Mesh(new THREE.SphereGeometry(.045,10,8),eyeMat);eye.position.set(.18,.06,s*.285);head.add(eye);
+}
+const beard=new THREE.Mesh(new THREE.ConeGeometry(.13,.32,10),goatMat);beard.position.set(.15,-.37,0);beard.rotation.z=-.2;head.add(beard);
+const legs=[];
+for(const x of [-.48,.42])for(const z of [-.22,.22]){
+ const pivot=new THREE.Group();pivot.position.set(x,.78,z);goat.add(pivot);
+ const leg=new THREE.Mesh(new THREE.CylinderGeometry(.075,.065,.58,10),goatMat);leg.position.y=-.26;leg.castShadow=true;pivot.add(leg);
+ const hoof=new THREE.Mesh(new THREE.BoxGeometry(.17,.13,.2),hoofMat);hoof.position.set(.025,-.54,0);hoof.castShadow=true;pivot.add(hoof);
+ legs.push(pivot);
+}
+const tail=new THREE.Mesh(new THREE.ConeGeometry(.07,.32,9),goatMat);tail.position.set(-.94,1.16,0);tail.rotation.z=-1.1;goat.add(tail);
+goat.position.set(0,0,0);
+
+let joy={x:0,y:0},keys={},running=true,walk=0;
+const joyEl=document.querySelector('#joy'),knob=document.querySelector('#knob');
+let activePointer=null;
+function setJoy(e){const r=joyEl.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;let dx=e.clientX-cx,dy=e.clientY-cy;const max=r.width*.31,len=Math.hypot(dx,dy);if(len>max){dx=dx/len*max;dy=dy/len*max}joy.x=dx/max;joy.y=dy/max;knob.style.transform=`translate(${dx}px,${dy}px)`}
+function clearJoy(){activePointer=null;joy.x=joy.y=0;knob.style.transform='translate(0,0)'}
+joyEl.addEventListener('pointerdown',e=>{activePointer=e.pointerId;joyEl.setPointerCapture(e.pointerId);setJoy(e)});
+joyEl.addEventListener('pointermove',e=>{if(e.pointerId===activePointer)setJoy(e)});
+joyEl.addEventListener('pointerup',clearJoy);joyEl.addEventListener('pointercancel',clearJoy);
+addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true});addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false});
+document.querySelector('#run').onclick=()=>{running=!running;document.querySelector('#run').textContent=running?'БЕЖАТЬ':'СТОП'};
+document.querySelector('#reset').onclick=()=>{goat.position.set(0,0,0);goat.rotation.y=0;};
+const clock=new THREE.Clock();
+const camTarget=new THREE.Vector3();
+function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.04);
+ if(running){
+  const kx=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);
+  const kz=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
+  let x=THREE.MathUtils.clamp(joy.x+kx,-1,1),z=THREE.MathUtils.clamp(joy.y+kz,-1,1);
+  const len=Math.hypot(x,z);if(len>1){x/=len;z/=len}
+  if(len>.08){const speed=3.8;goat.position.x+=x*speed*dt;goat.position.z+=z*speed*dt;goat.position.x=THREE.MathUtils.clamp(goat.position.x,-14.2,14.2);goat.position.z=THREE.MathUtils.clamp(goat.position.z,-14.2,14.2);goat.rotation.y=Math.atan2(-x,-z)+Math.PI/2;walk+=dt*11*len;legs[0].rotation.x=Math.sin(walk)*.65;legs[3].rotation.x=Math.sin(walk)*.65;legs[1].rotation.x=-Math.sin(walk)*.65;legs[2].rotation.x=-Math.sin(walk)*.65;goat.position.y=Math.abs(Math.sin(walk*2))*.055;}
+  else{goat.position.y=THREE.MathUtils.damp(goat.position.y,0,10,dt);for(const l of legs)l.rotation.x=THREE.MathUtils.damp(l.rotation.x,0,10,dt)}
+ }
+ const desired=new THREE.Vector3(goat.position.x+5,4.2,goat.position.z+7);
+ camera.position.lerp(desired,1-Math.exp(-3*dt));camTarget.set(goat.position.x,1.1,goat.position.z);camera.lookAt(camTarget);
+ renderer.render(scene,camera);
+}
+animate();
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2))});
+</script>
+</body></html>
