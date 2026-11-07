@@ -18,7 +18,7 @@ db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 db.pragma('busy_timeout = 5000');
 
-db.exec(\`
+db.exec(`
 CREATE TABLE IF NOT EXISTS users (
  id INTEGER PRIMARY KEY AUTOINCREMENT,
  login TEXT NOT NULL UNIQUE COLLATE NOCASE,
@@ -52,7 +52,7 @@ CREATE INDEX IF NOT EXISTS idx_posts_user_id_id ON posts(user_id, id DESC);
 CREATE INDEX IF NOT EXISTS idx_comments_post_id_id ON comments(post_id, id);
 CREATE INDEX IF NOT EXISTS idx_messages_sender_receiver_id ON messages(sender_id, receiver_id, id);
 CREATE INDEX IF NOT EXISTS idx_messages_receiver_sender_id ON messages(receiver_id, sender_id, id);
-\`);
+`);
 
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
@@ -252,7 +252,7 @@ app.post(PREFIX + '/api/posts/:id/comments', needAuth, writeLimit, (req, res) =>
 
 app.get(PREFIX + '/api/chats', needAuth, (req, res) => {
   const id = req.session.userId;
-  const users = db.prepare(\`
+  const users = db.prepare(`
     SELECT u.id, u.login, u.name, u.age, u.avatar, MAX(m.id) AS last_id
     FROM messages m
     JOIN users u ON u.id = CASE WHEN m.sender_id = ? THEN m.receiver_id ELSE m.sender_id END
@@ -260,7 +260,7 @@ app.get(PREFIX + '/api/chats', needAuth, (req, res) => {
     GROUP BY u.id
     ORDER BY last_id DESC
     LIMIT 100
-  \`).all(id, id, id);
+  `).all(id, id, id);
   res.json({ users: users.map(publicUser) });
 });
 
@@ -270,7 +270,7 @@ app.get(PREFIX + '/api/messages/:id', needAuth, (req, res) => {
   if (!Number.isSafeInteger(other) || other < 1 || other === me || !userById(other)) {
     return res.status(404).json({ error: 'Собеседник не найден.' });
   }
-  const messages = db.prepare(\`
+  const messages = db.prepare(`
     SELECT m.*, s.name AS sender_name
     FROM messages m
     JOIN users s ON s.id = m.sender_id
@@ -278,7 +278,7 @@ app.get(PREFIX + '/api/messages/:id', needAuth, (req, res) => {
        OR (m.sender_id = ? AND m.receiver_id = ?)
     ORDER BY m.id DESC
     LIMIT 300
-  \`).all(me, other, other, me).reverse();
+  `).all(me, other, other, me).reverse();
   res.json({ messages });
 });
 
