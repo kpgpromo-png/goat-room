@@ -203,7 +203,7 @@ app.put(PREFIX + '/api/profile', needAuth, writeLimit, (req, res) => {
   if (!name || name.length > 40 || !Number.isInteger(age) || age < 13 || age > 120) {
     return res.status(400).json({ error: 'Проверь имя и возраст от 13 до 120 лет.' });
   }
-  if (avatar && (!/^data:image\\/(png|jpeg|webp|gif);base64,/i.test(avatar) || avatar.length > 1500000)) {
+  if (avatar && (!/^data:image\/(png|jpeg|webp|gif);base64,/i.test(avatar) || avatar.length > 1500000)) {
     return res.status(400).json({ error: 'Фото должно быть JPG, PNG, WEBP или GIF размером до 1 МБ.' });
   }
   db.prepare('UPDATE users SET name = ?, age = ?, avatar = ? WHERE id = ?')
